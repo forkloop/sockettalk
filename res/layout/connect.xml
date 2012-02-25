@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent" 
+	android:orientation="vertical" >
+    <TextView
+    	android:id="@+id/address1"
+    	android:layout_height="wrap_content"
+    	android:layout_width="wrap_content"
+    	android:text="address"
+    />
+    <EditText
+    	android:id="@+id/address"
+    	android:layout_width="match_parent"
+    	android:layout_height="wrap_content"
+    	android:inputType="number"
+    	android:digits="0123456789." />
+	<TextView
+		android:id="@+id/port1"
+		android:layout_height="wrap_content"
+		android:layout_width="wrap_content"
+		android:text="port"
+	/>
+    <EditText
+    	android:id="@+id/port"
+    	android:layout_width="match_parent"
+    	android:layout_height="wrap_content"
+    	android:inputType="number" />
+      	
+	<LinearLayout 
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		>
+		<Button
+			android:id="@+id/cancel_button"
+			android:layout_height="wrap_content"
+			android:layout_width="match_parent"
+			android:layout_weight="1.0"
+			android:text="Cancel"
+		/>
+		<Button
+			android:id="@+id/ok_button" 
+			android:layout_height="wrap_content"
+			android:layout_width="match_parent"
+			android:layout_weight="1.0"
+			android:text="OK"
+		/>
+	</LinearLayout>
+</LinearLayout>

@@ -1,0 +1,9 @@
+*.png
+*.class
+*.properties
+*.cfg
+*.apk
+*.dex
+*.ap_
+*.project
+*.classpath
