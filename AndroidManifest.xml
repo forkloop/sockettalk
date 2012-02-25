@@ -28,5 +28,10 @@
 		<service
 			android:name=".ConnectService" >
 		</service>
+		<provider
+			android:authorities="edu.buffalo.cse.cse486-586.provider.permission.ALL_PERMISSION"
+			android:name=".SocketTalkProvider" >
+		</provider>
+		
 	</application>
 </manifest>

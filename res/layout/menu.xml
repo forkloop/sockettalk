@@ -3,6 +3,7 @@
 	<item	android:id="@+id/test"
 			android:title="TEST"
 			android:icon="@drawable/gwheels"
+			android:showAsAction="ifRoom"
 	/>
 	<item 	android:id="@+id/connect"
 			android:title="connect"
