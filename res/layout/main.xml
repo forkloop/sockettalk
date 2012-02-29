@@ -27,7 +27,6 @@
     	android:layout_height="wrap_content"
     	android:layout_alignParentRight="true"
     	android:layout_alignParentBottom="true"
-    	android:typeface="monospace"
     	android:text="send"
     	android:textSize="16dp"
     	android:gravity="center_vertical|center_horizontal"

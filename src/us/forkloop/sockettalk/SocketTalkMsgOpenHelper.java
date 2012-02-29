@@ -10,8 +10,8 @@ public class SocketTalkMsgOpenHelper extends SQLiteOpenHelper {
 	private static final int DB_VERSION = 2;
 	private static final String DB_NAME = "sockettalk.db";
 	private static final String MSG_TABLE_NAME = "msg";
-	private static final String MSG_SEND_NAME = "sender";
-	private static final String MSG_CONTENT = "content";
+	private static final String MSG_SEND_NAME = "provider_key";
+	private static final String MSG_CONTENT = "provider_value";
 	private static final String MSG_TABLE_CREATE = 
 			"create table" + MSG_TABLE_NAME + "(" +
 					MSG_SEND_NAME + "text, " +

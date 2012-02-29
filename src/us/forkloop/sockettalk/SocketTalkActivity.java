@@ -1,16 +1,21 @@
 package us.forkloop.sockettalk;
 
 
+import java.io.PrintWriter;
+
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -24,14 +29,16 @@ import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import java.io.PrintWriter;
 //import java.net.ServerSocket;
 //import java.net.Socket;
 
 public class SocketTalkActivity extends Activity implements OnClickListener {
     /** Called when the activity is first created. */
     
+	private static final String MSG_SENDER = "provider_key";
+	private static final String MSG_CONTENT = "provider_value";
+	private static final Uri TABLE_URI = Uri.parse("content://edu.buffalo.cse.cse486_586.provider");
+	
 	private static int msgCount = 0;
 	private int peerPort;
 	private int myPort;
@@ -66,14 +73,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
         Intent intent = new Intent(this, ListenService.class);
         intent.putExtra("myPort", myPort);
         startService(intent);
-        /*
-        try{
-        	setInSocket(new ServerSocket(myPort));
-        	Toast.makeText(this, "listening at port "+myPort, 2000).show();
-        } catch(IOException e) {
-        	Toast.makeText(this, e.toString(), 2000);
-        }
-        */
+        
         sendButton = (Button) findViewById(R.id.send_button);
         sendButton.setOnClickListener(this);
         
@@ -113,7 +113,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
     	MenuInflater inflater = getMenuInflater();
-    	inflater.inflate(R.layout.menu, menu);
+    	inflater.inflate(R.menu.menu, menu);
     	return true;
     }
     
@@ -121,15 +121,11 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     public boolean onOptionsItemSelected(MenuItem item) {
     	switch (item.getItemId()) {
     	// disable it after connecting
+    	case R.id.test:
+    		Test();
+    		return true;
     	case R.id.connect:
     		showDialog(0);
-    		Log.i("log", "here or not");
-    	/*	
-    		Intent intent = new Intent(this, ConnectService.class);
-    		intent.putExtra("peerPort", peerPort);
-    		intent.putExtra("peerAddress", peerAddress);
-    		startService(intent);
-    	*/
     		return true;
 //    	// or called disconnect ? and disable it before connect
 //    	case R.id.signout:
@@ -194,16 +190,13 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 				out.println(msg);
 				TextView tv = new TextView(this);
 				tv.setText(msg);
-				//tv.setAnimation(animation);
 				tv.setBackgroundDrawable(shape);
-				//tv.setPadding(2, 5, 2, 5);
-				//tv.setBackgroundColor(Color.GRAY);
 				tv.setTextColor(Color.RED);				
 				tv.setId(++msgCount);
-				Log.i("log", ""+ msgCount +" msg");
-			    RelativeLayout.LayoutParams layRule = 
-			    		new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
-			    				RelativeLayout.LayoutParams.WRAP_CONTENT);
+				//Log.i("log", ""+ msgCount +" msg");
+				RelativeLayout.LayoutParams layRule = 
+						new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
+								RelativeLayout.LayoutParams.WRAP_CONTENT);
 			    layRule.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
 			    layRule.setMargins(2, 3, 2, 3);
 			    if(msgCount==0){
@@ -213,8 +206,11 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 			    	layRule.addRule(RelativeLayout.BELOW, msgCount-1);
 			    }
 			    display.addView(tv, layRule);
-				//msgCount++;
-				Toast.makeText(this, msg, 1000).show();
+			    // store into db
+				ContentValues inserted = new ContentValues();
+				inserted.put(MSG_SENDER, "me");
+				inserted.put(MSG_CONTENT, msg);
+				Uri uri = getApplicationContext().getContentResolver().insert(TABLE_URI, inserted);
 			}
 			break;
 		}
@@ -228,9 +224,9 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 			if(intent.getAction().equals("us.forkloop.sockettalk.RECV")){
 				Log.i("log", "recv a broadcast msg");
 				TextView tv = new TextView(activityContext);
-				tv.setText(intent.getStringExtra("msg"));
+				String msg = intent.getStringExtra("msg");
+				tv.setText(msg);
 				tv.setBackgroundDrawable(shape);
-				//tv.setBackgroundColor(Color.GRAY);
 				tv.setTextColor(Color.GREEN);
 				tv.setId(++msgCount);
 			    RelativeLayout.LayoutParams layRule = 
@@ -243,7 +239,41 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 			    else
 			    	layRule.addRule(RelativeLayout.BELOW, msgCount-1);
 				display.addView(tv, layRule);
+				// store into db
+				ContentValues inserted = new ContentValues();
+				inserted.put(MSG_SENDER, "peer");
+				inserted.put(MSG_CONTENT, msg);
+				Uri uri = getApplicationContext().getContentResolver().insert(TABLE_URI, inserted);				
 			}
+		}
+	}
+	
+	public void Test() {
+		
+		String[] projection = {MSG_SENDER, MSG_CONTENT};
+		
+		Cursor c = getApplicationContext().getContentResolver().query(TABLE_URI, projection, null, null, null);
+		
+		int sender_index = c.getColumnIndexOrThrow(MSG_SENDER);
+		int content_index = c.getColumnIndexOrThrow(MSG_CONTENT);
+		
+		if(c != null){
+			int count = 0;
+			while(c.moveToNext()) {
+				TextView tv = new TextView(activityContext);
+				tv.setText(c.getString(content_index));
+				tv.setBackgroundDrawable(shape);
+				tv.setId(++count);
+				RelativeLayout.LayoutParams layRule = 
+			    		new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
+			    				RelativeLayout.LayoutParams.WRAP_CONTENT);
+				layRule.setMargins(2, 3, 2, 3);
+				layRule.addRule(RelativeLayout.BELOW, count-1);
+				display.addView(tv, layRule);
+			}
+		}
+		else{
+		Toast.makeText(getApplicationContext(), "no message", 1000).show();
 		}
 	}
 }
