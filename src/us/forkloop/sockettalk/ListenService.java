@@ -1,7 +1,8 @@
 package us.forkloop.sockettalk;
 
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -52,23 +53,70 @@ public class ListenService extends IntentService {
 			//Log.i("log", "binding address "+ inSocket.getInetAddress().toString());
 			
 			while (true) {
-				SocketTalkActivity.selector.select();
 				
+				SocketTalkActivity.selector.select();				
 				Iterator iter = SocketTalkActivity.selector.selectedKeys().iterator();
 				
 				while (iter.hasNext()) {
-					SelectionKey key = (SelectionKey)iter.next();
-					
+					SelectionKey key = (SelectionKey) iter.next();
+					// new connection
 					if ((key.readyOps() & SelectionKey.OP_ACCEPT) == SelectionKey.OP_ACCEPT) {
-						ServerSocketChannel ssc = (ServerSocketChannel)key.channel();
+						ServerSocketChannel ssc = (ServerSocketChannel) key.channel();
 						SocketChannel sc = ssc.accept();
 						sc.configureBlocking(false);
 						sc.register(SocketTalkActivity.selector, SelectionKey.OP_READ);
-						SocketTalkActivity.out.add(new PrintWriter(sc.socket().getOutputStream(), true));
+						//SocketTalkActivity.out.add(new PrintWriter(sc.socket().getOutputStream(), true));
+						SocketTalkActivity.out.add(sc.socket().getOutputStream());
 						
 					}
+					// new message
 					else if ((key.readyOps() & SelectionKey.OP_READ) == SelectionKey.OP_READ) {
-						SocketChannel sc = (SocketChannel)key.channel();
+						SocketChannel sc = (SocketChannel) key.channel();
+						InputStream is = sc.socket().getInputStream();
+						ObjectInputStream obj_in = new ObjectInputStream(is);
+						try {
+							Object msg = obj_in.readObject();
+							String msg_type = msg.getClass().getName();
+							if (msg_type.equals("Msg")) {
+								SocketTalkActivity.hold_back.add((Msg) msg);
+								//XXX send out proposed seq
+							}
+							else if (msg_type.equals("AgreeSeq")) {
+								AgreeSeq amsg = (AgreeSeq) msg;
+								String text;
+								int index = 0;
+								for (Msg m : SocketTalkActivity.hold_back) {
+									// XXX 
+									// When the message at the front of the hold-back
+									// queue has been assigned its agreed sequence number
+									if (m.msg_id == amsg.msg_id && m.send_id == amsg.send_id) {
+										text = m.msg_content;
+										SocketTalkActivity.hold_back.remove(index);
+										// display
+										Intent i = new Intent();
+										i.putExtra("msg", text);
+										i.setAction("us.forkloop.sockettalk.RECV");
+										Log.i("log", "send a broadcast msg");
+										this.sendBroadcast(i);
+										break;
+									}
+									index++;
+								}
+							}
+							else if (msg_type.equals("PropSeq")) {
+								PropSeq pmsg = (PropSeq) msg;
+								int index = pmsg.msg_id;
+								int value = SocketTalkActivity.seq.get(index);
+								value = value > pmsg.msg_seq ? value : pmsg.msg_seq;
+								SocketTalkActivity.seq.set(index, value);
+								SocketTalkActivity.stat.set(index, SocketTalkActivity.stat.get(index)+1);
+								if (SocketTalkActivity.stat.get(index) == SocketTalkActivity.out.size()) {
+									//XXX send agree seq
+								}
+							}
+						} catch (ClassNotFoundException e) {
+							Log.i("log", e.toString());
+						}
 					}
 
 					iter.remove();

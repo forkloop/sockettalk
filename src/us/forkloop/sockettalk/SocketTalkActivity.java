@@ -2,6 +2,8 @@ package us.forkloop.sockettalk;
 
 
 import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -9,6 +11,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 import android.app.Activity;
 import android.app.Dialog;
@@ -25,6 +28,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -44,19 +48,26 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	private static final String MSG_CONTENT = "provider_value";
 	private static final Uri TABLE_URI = Uri.parse("content://edu.buffalo.cse.cse486_586.provider");
 	
-	private static int msgCount = 0;
-	private int myPort;
+	// used to break tie when two msgs have the same seq.#
+	private int id;
+	// total msg number sent on this device
+	private static int msg_count = 0;
+	private int my_port;
 	private Button sendButton;
 	private EditText sendMsg;
 	private RelativeLayout display;
 	private Receiver recvHandler;
 	private Context activityContext;
 	
-	// global variables, FIXME replace with extends App
+	// global variables 
+	// XXX replace with extends App
 	static Selector selector;
-	static ArrayList<PrintWriter> out;
+	static ArrayList<OutputStream> out;
+	//static ArrayList<PrintWriter> out;
 	//static PrintWriter[] out;
-	
+	static LinkedList<Msg> hold_back;
+	static ArrayList<Integer> stat;
+	static ArrayList<Integer> seq;
 	
 	public Resources res;
 	public Drawable shape;
@@ -65,6 +76,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
     	
+        // keep the peers
         out = new ArrayList();
         activityContext = this;
         res = getResources();
@@ -72,12 +84,15 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
         PreferenceManager.setDefaultValues(this, R.layout.preference, true);
         SharedPreferences sharePref = PreferenceManager.getDefaultSharedPreferences(this);
     	
-        myPort = Integer.parseInt(sharePref.getString("portnum", "10000"));
+        TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+        id = Integer.parseInt(tel.getLine1Number().substring(tel.getLine1Number().length()-4));
+        
+        my_port = Integer.parseInt(sharePref.getString("portnum", "10000"));
         setContentView(R.layout.main);
         
         Intent intent = new Intent(this, ListenService.class);
-        intent.putExtra("myPort", myPort);
-        /* listen to port: myPort */
+        intent.putExtra("my_port", my_port);
+        /* listen to port: my_port */
         startService(intent);
         
         sendButton = (Button) findViewById(R.id.send_button);
@@ -181,66 +196,92 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     		return dialog;
     }
 
-    // For incoming msg, set color to blue, and align to right
+    //
+    // send out
+    //
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
 		case R.id.send_button:
-			String msg = sendMsg.getText().toString();
-			sendMsg.setText("");
-			if (msg.length() > 0) {
-				for (PrintWriter pw : out) {
-					pw.println(msg);
+			
+			String text = sendMsg.getText().toString();
+			/* send the messages if user DO enter something */
+			if (text.length() > 0) {
+				sendMsg.setText("");
+				Msg msg = new Msg();
+				msg.msg_content = text;
+				msg.send_id = id;
+				msg.msg_type = MsgType.MSG;
+				msg.msg_id = msg_count;
+				//XXX seq #
+				
+				for (OutputStream os : out) {
+					try {
+						ObjectOutputStream obj_out = new ObjectOutputStream(os);
+						obj_out.writeObject(msg);
+					} catch (IOException e) {
+						Log.i("log", e.toString());
+					}
+					//pw.println(text);
 				}
-				TextView tv = new TextView(this);
-				tv.setText(msg);
-				tv.setBackgroundDrawable(shape);
-				tv.setTextColor(Color.RED);				
-				tv.setId(++msgCount);
-				RelativeLayout.LayoutParams layRule = 
-						new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
-								RelativeLayout.LayoutParams.WRAP_CONTENT);
-			    layRule.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-			    layRule.setMargins(2, 3, 2, 3);
-			    if (msgCount==0) {
-			    	layRule.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-			    }
-			    else {
-			    	layRule.addRule(RelativeLayout.BELOW, msgCount-1);
-			    }
-			    display.addView(tv, layRule);
-			    // store into db
-				ContentValues inserted = new ContentValues();
-				inserted.put(MSG_SENDER, "me");
-				inserted.put(MSG_CONTENT, msg);
-				Uri uri = getApplicationContext().getContentResolver().insert(TABLE_URI, inserted);
+				/* now we should add it to the holdback queue */
+				hold_back.add(msg);
+				
+//				TextView tv = new TextView(this);
+//				tv.setText(text);
+//				tv.setBackgroundDrawable(shape);
+//				tv.setTextColor(Color.RED);				
+//				tv.setId(++msg_count);
+//				RelativeLayout.LayoutParams layRule = 
+//						new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
+//								RelativeLayout.LayoutParams.WRAP_CONTENT);
+//			    layRule.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+//			    layRule.setMargins(2, 3, 2, 3);
+//			    if (msg_count==0) {
+//			    	layRule.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+//			    }
+//			    else {
+//			    	layRule.addRule(RelativeLayout.BELOW, msg_count-1);
+//			    }
+//			    display.addView(tv, layRule);
+//			    // store into db
+//				ContentValues inserted = new ContentValues();
+//				inserted.put(MSG_SENDER, "me");
+//				inserted.put(MSG_CONTENT, text);
+//				Uri uri = getApplicationContext().getContentResolver().insert(TABLE_URI, inserted);
 			}
 			break;
 		}
 		
 	}
 	
+	//
+	// For incoming messages, set color to blue, and align to right
+	//
 	private class Receiver extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			Log.i("log", "recv a broadcast");
-			if(intent.getAction().equals("us.forkloop.sockettalk.RECV")){
+			if (intent.getAction().equals("us.forkloop.sockettalk.RECV")) {
 				Log.i("log", "recv a broadcast msg");
+				// each time a msg is displayed, it will received the agreed msg
+				// first.
+				
 				TextView tv = new TextView(activityContext);
 				String msg = intent.getStringExtra("msg");
 				tv.setText(msg);
 				tv.setBackgroundDrawable(shape);
 				tv.setTextColor(Color.GREEN);
-				tv.setId(++msgCount);
+				tv.setId(++msg_count);
 			    RelativeLayout.LayoutParams layRule = 
 			    		new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
 			    				RelativeLayout.LayoutParams.WRAP_CONTENT);
 			    layRule.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
 			    layRule.setMargins(2, 3, 2, 3);
-			    if(msgCount==0)
+			    if (msg_count == 0)
 			    	layRule.addRule(RelativeLayout.ALIGN_PARENT_TOP);
 			    else
-			    	layRule.addRule(RelativeLayout.BELOW, msgCount-1);
+			    	layRule.addRule(RelativeLayout.BELOW, msg_count-1);
 				display.addView(tv, layRule);
 				// store into db
 				ContentValues inserted = new ContentValues();
@@ -251,15 +292,18 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 		}
 	}
 	
+	//
 	/////// connect to a remote host
+	//
 	public void connect(String address, int port) throws IOException {
 		
-		Log.i("log", "connecting to "+ address + ":" + port);		
+		Log.i("log", "connecting to " + address + ":" + port);		
 		SocketChannel sc = SocketChannel.open();
 		Socket sk = sc.socket();
 		sk.connect(new InetSocketAddress("10.0.2.2", 10000));
 		sc.register(selector, SelectionKey.OP_READ);
-		out.add(new PrintWriter(sk.getOutputStream(), true));
+		out.add(sk.getOutputStream());
+		//out.add(new PrintWriter(sk.getOutputStream(), true));
 	}
 	
 	public void Test() {
