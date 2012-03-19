@@ -10,25 +10,25 @@ enum MsgType {
 public class Msg implements Serializable {
 
 	int send_id;
-	int msg_seq;
-	MsgType msg_type;
+//	int msg_seq;
+//	MsgType msg_type;
 	String msg_content;
 	int msg_id;
 }
 
 /* class for proposed sequence # */
-class PropSeq {
+class PropSeq implements Serializable {
 
 	int msg_seq;
-	MsgType msg_type;
+//	MsgType msg_type;
 	int msg_id;
 }
 
 /* class for agreed sequence # */
-class AgreeSeq {
+class AgreeSeq implements Serializable {
 	
 	int msg_seq;
-	MsgType msg_type;
+//	MsgType msg_type;
 	int msg_id;
 	int send_id;
 }

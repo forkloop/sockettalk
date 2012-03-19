@@ -2,17 +2,10 @@ package us.forkloop.sockettalk;
 
 
 import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.LinkedList;
-
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.BroadcastReceiver;
@@ -39,19 +32,24 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 public class SocketTalkActivity extends Activity implements OnClickListener {
     /** Called when the activity is first created. */
     
 	private static final String MSG_SENDER = "provider_key";
 	private static final String MSG_CONTENT = "provider_value";
-	private static final Uri TABLE_URI = Uri.parse("content://edu.buffalo.cse.cse486_586.provider");
+	private static final Uri TABLE_URI = Uri.parse("content://edu.buffalo.cse.cse486_586.provider/msgs");
 	
-	// used to break tie when two msgs have the same seq.#
-	private int id;
-	// total msg number sent on this device
-	private static int msg_count = 0;
+	// Used to break tie when two msgs have the same seq.#
+	static int id;
+	
+	private static int total_count = 0;
+	static int sent_count = 0;
+	
+	////////////////////
+	static int Amax;
+	static int Pmax;
+	///////////////////
 	private int my_port;
 	private Button sendButton;
 	private EditText sendMsg;
@@ -59,12 +57,10 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	private Receiver recvHandler;
 	private Context activityContext;
 	
-	// global variables 
+	///////// Global variables /////////// 
 	// XXX replace with extends App
 	static Selector selector;
-	static ArrayList<OutputStream> out;
-	//static ArrayList<PrintWriter> out;
-	//static PrintWriter[] out;
+	static ArrayList<SocketChannel> out;
 	static LinkedList<Msg> hold_back;
 	static ArrayList<Integer> stat;
 	static ArrayList<Integer> seq;
@@ -76,23 +72,43 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
     	
-        // keep the peers
-        out = new ArrayList();
+        out = new ArrayList<SocketChannel>();
+        hold_back = new LinkedList<Msg>();
+        stat = new ArrayList<Integer>(10);
+        seq = new ArrayList<Integer>(10);
+        
+        // Fill in the damn first elements
+        stat.add(0);
+        seq.add(0);
+
         activityContext = this;
+        // For the bubble
         res = getResources();
         shape = res.getDrawable(R.drawable.msgbg);
+        
         PreferenceManager.setDefaultValues(this, R.layout.preference, true);
         SharedPreferences sharePref = PreferenceManager.getDefaultSharedPreferences(this);
     	
         TelephonyManager tel = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
         id = Integer.parseInt(tel.getLine1Number().substring(tel.getLine1Number().length()-4));
+        Log.i("log", "Id " + id);
         
         my_port = Integer.parseInt(sharePref.getString("portnum", "10000"));
-        setContentView(R.layout.main);
+        Log.i("log", "Listening at " + my_port);
         
+        setContentView(R.layout.main);
+                
+        try {
+        	selector = Selector.open();
+        	Log.i("log", "Selector " + selector.toString());
+        } catch (IOException e) {
+        	Log.i("log", e.toString());
+        }
+
+        /* listen to port: my_port */
+
         Intent intent = new Intent(this, ListenService.class);
         intent.putExtra("my_port", my_port);
-        /* listen to port: my_port */
         startService(intent);
         
         sendButton = (Button) findViewById(R.id.send_button);
@@ -100,6 +116,13 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
         
         sendMsg = (EditText) findViewById(R.id.input_msg);
         display = (RelativeLayout) findViewById(R.id.msg_display);
+        
+        Button testButton1 = (Button) findViewById(R.id.test1);
+        testButton1.setOnClickListener(this);
+        
+        Button testButton2 = (Button) findViewById(R.id.test2);
+        testButton2.setOnClickListener(this);
+        
     }
 	
 	@Override
@@ -138,7 +161,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     public boolean onOptionsItemSelected(MenuItem item) {
     	switch (item.getItemId()) {
     	case R.id.test:
-    		Test();
+    		TestDB();
     		return true;
     	case R.id.connect:
     		showDialog(0);
@@ -157,7 +180,6 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     		Dialog dialog;
     		switch(id) {
     		case 0:
-    			Log.i("log", "connection setup...");
     			dialog = new Dialog(this);
     		    dialog.setContentView(R.layout.connect);
     		    dialog.setTitle("Settings");
@@ -174,18 +196,12 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     				public void onClick(View v) {
     					int peerPort = Integer.parseInt(portView.getText().toString());
     					String peerAddress = addressView.getText().toString();
-    				///////// replace with connect() method /////////
-    				/*	Toast.makeText(getApplicationContext(), peerAddress+":"+peerPort, 1000).show();
+    				//	Toast.makeText(getApplicationContext(), peerAddress+":"+peerPort, 1000).show();
     					Intent intent = new Intent(getApplicationContext(), ConnectService.class);
     		    		intent.putExtra("peerPort", peerPort);
     		    		intent.putExtra("peerAddress", peerAddress);
     		    		startService(intent);
-    				*/
-    					try {
-							connect(peerAddress, peerPort);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
+    				
     		    		dismissDialog(0);
     				}
     			});
@@ -197,62 +213,38 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     }
 
     //
-    // send out
+    // Sending out.........
     //
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
-		case R.id.send_button:
-			
+		
+		case R.id.send_button:			
 			String text = sendMsg.getText().toString();
-			/* send the messages if user DO enter something */
 			if (text.length() > 0) {
+				
 				sendMsg.setText("");
-				Msg msg = new Msg();
-				msg.msg_content = text;
-				msg.send_id = id;
-				msg.msg_type = MsgType.MSG;
-				msg.msg_id = msg_count;
-				//XXX seq #
+
+				stat.add(1);
+				Log.i("log", "Stat[]: " + stat.toString());
+				Pmax = Math.max(Amax, Pmax) + 1;
+				seq.add(Pmax);
+				Log.i("log", "Seq[]: " + seq.toString());
 				
-				for (OutputStream os : out) {
-					try {
-						ObjectOutputStream obj_out = new ObjectOutputStream(os);
-						obj_out.writeObject(msg);
-					} catch (IOException e) {
-						Log.i("log", e.toString());
-					}
-					//pw.println(text);
-				}
-				/* now we should add it to the holdback queue */
-				hold_back.add(msg);
-				
-//				TextView tv = new TextView(this);
-//				tv.setText(text);
-//				tv.setBackgroundDrawable(shape);
-//				tv.setTextColor(Color.RED);				
-//				tv.setId(++msg_count);
-//				RelativeLayout.LayoutParams layRule = 
-//						new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
-//								RelativeLayout.LayoutParams.WRAP_CONTENT);
-//			    layRule.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-//			    layRule.setMargins(2, 3, 2, 3);
-//			    if (msg_count==0) {
-//			    	layRule.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-//			    }
-//			    else {
-//			    	layRule.addRule(RelativeLayout.BELOW, msg_count-1);
-//			    }
-//			    display.addView(tv, layRule);
-//			    // store into db
-//				ContentValues inserted = new ContentValues();
-//				inserted.put(MSG_SENDER, "me");
-//				inserted.put(MSG_CONTENT, text);
-//				Uri uri = getApplicationContext().getContentResolver().insert(TABLE_URI, inserted);
+				Intent intent = new Intent(this, SendService.class);
+				intent.putExtra("text", text);
+				startService(intent);
 			}
 			break;
-		}
-		
+		case R.id.test1:
+			Log.i("log", "Test One...");
+			Test1();
+			break;
+		case R.id.test2:
+			Log.i("log", "Test Two...");
+			Test2();
+			break;
+		}	
 	}
 	
 	//
@@ -261,61 +253,60 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	private class Receiver extends BroadcastReceiver {
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			Log.i("log", "recv a broadcast");
-			if (intent.getAction().equals("us.forkloop.sockettalk.RECV")) {
-				Log.i("log", "recv a broadcast msg");
-				// each time a msg is displayed, it will received the agreed msg
-				// first.
+
+			if ( intent.getAction().equals("us.forkloop.sockettalk.RECV") ) {
+				Log.i("log", "Displaying a msg");
 				
 				TextView tv = new TextView(activityContext);
 				String msg = intent.getStringExtra("msg");
+				String peer = "" + intent.getIntExtra("id", 0);
 				tv.setText(msg);
 				tv.setBackgroundDrawable(shape);
-				tv.setTextColor(Color.GREEN);
-				tv.setId(++msg_count);
+				tv.setTextColor(Color.RED);
+				tv.setId( ++total_count );
 			    RelativeLayout.LayoutParams layRule = 
 			    		new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, 
 			    				RelativeLayout.LayoutParams.WRAP_CONTENT);
 			    layRule.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
 			    layRule.setMargins(2, 3, 2, 3);
-			    if (msg_count == 0)
+			    if (total_count == 0)
 			    	layRule.addRule(RelativeLayout.ALIGN_PARENT_TOP);
 			    else
-			    	layRule.addRule(RelativeLayout.BELOW, msg_count-1);
+			    	layRule.addRule(RelativeLayout.BELOW, total_count-1);
 				display.addView(tv, layRule);
-				// store into db
+				
+				//////////////////////////////////
+				////// Save to database /////////
+				////////////////////////////////
 				ContentValues inserted = new ContentValues();
-				inserted.put(MSG_SENDER, "peer");
+				inserted.put(MSG_SENDER, peer);
 				inserted.put(MSG_CONTENT, msg);
-				Uri uri = getApplicationContext().getContentResolver().insert(TABLE_URI, inserted);				
+				Log.i("log", "Inserted message: " + inserted.toString());
+				Uri uri = getApplicationContext().getContentResolver().insert(TABLE_URI, inserted);
+				Log.i("log", "Inserting a new message: " + uri.toString());
 			}
 		}
 	}
 	
-	//
-	/////// connect to a remote host
-	//
-	public void connect(String address, int port) throws IOException {
-		
-		Log.i("log", "connecting to " + address + ":" + port);		
-		SocketChannel sc = SocketChannel.open();
-		Socket sk = sc.socket();
-		sk.connect(new InetSocketAddress("10.0.2.2", 10000));
-		sc.register(selector, SelectionKey.OP_READ);
-		out.add(sk.getOutputStream());
-		//out.add(new PrintWriter(sk.getOutputStream(), true));
+	public void Test1() {
+	
 	}
 	
-	public void Test() {
+	public void Test2() {
+		
+	}
+	
+	public void TestDB() {
 		
 		String[] projection = {MSG_SENDER, MSG_CONTENT};
 		
 		Cursor c = getApplicationContext().getContentResolver().query(TABLE_URI, projection, null, null, null);
+		Log.i("log", "# of saved messages is " + c.getCount());
 		
-		int sender_index = c.getColumnIndexOrThrow(MSG_SENDER);
+//		int sender_index = c.getColumnIndexOrThrow(MSG_SENDER);
 		int content_index = c.getColumnIndexOrThrow(MSG_CONTENT);
 		
-		if(c != null){
+		if(c.getCount() > 0 ) {
 			int count = 0;
 			while(c.moveToNext()) {
 				TextView tv = new TextView(activityContext);
@@ -330,8 +321,8 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 				display.addView(tv, layRule);
 			}
 		}
-		else{
-		Toast.makeText(getApplicationContext(), "no message", 1000).show();
+		else {
+			Log.i("log", "Ops, NO MESSAGES");
 		}
 	}
 }

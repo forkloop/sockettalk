@@ -13,15 +13,15 @@ public class SocketTalkMsgOpenHelper extends SQLiteOpenHelper {
 	private static final String MSG_SEND_NAME = "provider_key";
 	private static final String MSG_CONTENT = "provider_value";
 	private static final String MSG_TABLE_CREATE = 
-			"create table" + MSG_TABLE_NAME + "(" +
-					MSG_SEND_NAME + "text, " +
-					MSG_CONTENT + "text);";
+			"CREATE TABLE " + MSG_TABLE_NAME + " (" +
+					MSG_SEND_NAME + " TEXT, " +
+					MSG_CONTENT + " TEXT);";
 	
-	SocketTalkMsgOpenHelper(Context context) {
+	public SocketTalkMsgOpenHelper(Context context) {
 		super(context, DB_NAME, null, DB_VERSION);
 	}
 	
-	SocketTalkMsgOpenHelper(Context context, String dbname) {
+	public SocketTalkMsgOpenHelper(Context context, String dbname) {
 		super(context, dbname, null, DB_VERSION);
 	}
 	
@@ -32,7 +32,7 @@ public class SocketTalkMsgOpenHelper extends SQLiteOpenHelper {
 	
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-		Log.i("log", "upgrade database...");
-		// FIXME
+		Log.i("log", "Upgrade database...");
+		// XXX We are not here yet.
 	}
 }

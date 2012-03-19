@@ -21,22 +21,42 @@
     	</RelativeLayout>
     </ScrollView>
     
+<LinearLayout
+	android:id="@+id/dd"
+	android:layout_width="match_parent"
+	android:layout_height="wrap_content"
+	android:layout_alignParentBottom="true" 
+	>
+    <Button
+    	android:id="@+id/test1"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_weight="1"
+    	android:text="TEST1" />
+    
+    <Button
+    	android:id="@+id/test2"
+    	android:layout_width="wrap_content"
+    	android:layout_height="wrap_content"
+    	android:layout_weight="1"
+    	android:text="TEST2" />
+</LinearLayout>
+    
     <Button 
     	android:id="@+id/send_button"
     	android:layout_width="wrap_content"
     	android:layout_height="wrap_content"
     	android:layout_alignParentRight="true"
-    	android:layout_alignParentBottom="true"
-    	android:text="send"
+    	android:layout_above="@id/dd"
+    	android:text="Send"
     	android:textSize="16dp"
     	android:gravity="center_vertical|center_horizontal"
     	/>
-    
+
     <EditText
     	android:id="@+id/input_msg"
     	android:layout_width="wrap_content"
     	android:layout_height="wrap_content"
-    	android:layout_alignParentBottom="true"
     	android:layout_alignParentLeft="true"
     	android:layout_alignTop="@id/send_button"
     	android:layout_toLeftOf="@id/send_button"
@@ -44,4 +64,5 @@
     	<requestFocus />
     </EditText>
 	
+    
 </RelativeLayout>

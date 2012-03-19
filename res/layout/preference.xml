@@ -3,7 +3,7 @@
 	<PreferenceCategory android:title="Main" >
 		<EditTextPreference
 			android:key="portnum"
-			android:defaultValue="14214"
+			android:defaultValue="10000"
 			android:title="Port Number"
 			android:summary="Edit to set the default listening port."
 		 />

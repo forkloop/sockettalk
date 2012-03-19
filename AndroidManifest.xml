@@ -5,7 +5,8 @@
 	android:versionName="1.0" >
 
 	<uses-sdk android:minSdkVersion="15" />
-	<uses-permission android:name="android.permission.INTERNET" /> 
+	<uses-permission android:name="android.permission.INTERNET" />
+	<uses-permission android:name="android.permission.READ_PHONE_STATE" />
 	<application
 		android:icon="@drawable/ic_launcher"
 		android:label="@string/app_name" >
@@ -25,13 +26,17 @@
 		<service
 			android:name=".ListenService" >
 		</service>
-		<service
+  		<service
 			android:name=".ConnectService" >
 		</service>
-		<provider
-			android:name=".SocketTalkProvider" 
+		<service
+			android:name=".SendService" >
+		</service>
+ 		<provider
+			android:name=".SocketTalkMsgProvider" 
 			android:permission="edu.buffalo.cse.cse486_586.provider.permission.ALL_PERMISSION"
 			android:authorities="edu.buffalo.cse.cse486_586.provider" >
-		</provider>		
+		</provider>
+		
 	</application>
 </manifest>
