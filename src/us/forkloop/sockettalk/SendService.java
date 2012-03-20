@@ -26,14 +26,17 @@ public class SendService extends IntentService {
 		
 		Msg msg = new Msg();
 		msg.msg_content = intent.getStringExtra("text");
+		//Log.i("log", intent.getStringExtra("text"));
 		msg.msg_id = ++SocketTalkActivity.sent_count;
 		Log.i("log", "# of msgs sent is " + SocketTalkActivity.sent_count);
-//		msg.msg_type = MsgType.MSG;
+//		SocketTalkActivity.Pmax = Math.max(SocketTalkActivity.Pmax, SocketTalkActivity.Amax) + 1;
+		msg.msg_seq = SocketTalkActivity.Pmax;
 		msg.send_id = SocketTalkActivity.id;
+		msg.d_flag = false;
 		SocketTalkActivity.hold_back.add(msg);
+		
 		byte[] bytes = null;
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		
 		try {
 			ObjectOutputStream oos = new ObjectOutputStream(bos);
 			oos.writeObject(msg);

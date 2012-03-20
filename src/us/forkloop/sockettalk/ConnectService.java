@@ -31,10 +31,10 @@ public class ConnectService extends IntentService {
 	protected void onHandleIntent (Intent intent) {
 
 		try {
-			int port = intent.getIntExtra("peerPort", 10000);
-			String address = intent.getStringExtra("peerAddress");
+			int port = intent.getIntExtra("peer_port", 10000);
+			String address = intent.getStringExtra("peer_address");
 			
-			Log.i("log", "connecting to "+ address + ":" + port);
+			Log.i("log", "Connecting to "+ address + ":" + port);
 			
 			SocketChannel sc = SocketChannel.open();
 			sc.configureBlocking(false);

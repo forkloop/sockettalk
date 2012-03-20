@@ -43,7 +43,9 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	// Used to break tie when two msgs have the same seq.#
 	static int id;
 	
-	private static int total_count = 0;
+	// # of messages already deliveryed
+	static int total_count = 0;
+	// # of messages sent by me
 	static int sent_count = 0;
 	
 	////////////////////
@@ -198,8 +200,8 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
     					String peerAddress = addressView.getText().toString();
     				//	Toast.makeText(getApplicationContext(), peerAddress+":"+peerPort, 1000).show();
     					Intent intent = new Intent(getApplicationContext(), ConnectService.class);
-    		    		intent.putExtra("peerPort", peerPort);
-    		    		intent.putExtra("peerAddress", peerAddress);
+    		    		intent.putExtra("peer_port", peerPort);
+    		    		intent.putExtra("peer_address", peerAddress);
     		    		startService(intent);
     				
     		    		dismissDialog(0);
@@ -260,6 +262,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 				TextView tv = new TextView(activityContext);
 				String msg = intent.getStringExtra("msg");
 				String peer = "" + intent.getIntExtra("id", 0);
+				Log.i("log", "Displaying: " + msg);
 				tv.setText(msg);
 				tv.setBackgroundDrawable(shape);
 				tv.setTextColor(Color.RED);
@@ -289,11 +292,15 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	}
 	
 	public void Test1() {
-	
+		
+		Intent i = new Intent(this, TestOne.class);
+		startService(i);
 	}
 	
 	public void Test2() {
 		
+		Intent i = new Intent(this, TestTwo.class);
+		startService(i);
 	}
 	
 	public void TestDB() {

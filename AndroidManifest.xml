@@ -32,7 +32,13 @@
 		<service
 			android:name=".SendService" >
 		</service>
- 		<provider
+		<service
+			android:name=".TestOne">
+		</service>
+		<service
+			android:name=".TestTwo">
+		</service>
+		<provider
 			android:name=".SocketTalkMsgProvider" 
 			android:permission="edu.buffalo.cse.cse486_586.provider.permission.ALL_PERMISSION"
 			android:authorities="edu.buffalo.cse.cse486_586.provider" >
