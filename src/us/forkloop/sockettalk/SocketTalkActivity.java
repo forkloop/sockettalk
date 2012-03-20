@@ -40,6 +40,10 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	private static final String MSG_CONTENT = "provider_value";
 	private static final Uri TABLE_URI = Uri.parse("content://edu.buffalo.cse.cse486_586.provider/msgs");
 	
+	
+	// FOR TEST
+	static boolean TEST_TWO_FLAG=true;
+	static boolean TEST_TWO_SENT=true;
 	// Used to break tie when two msgs have the same seq.#
 	static int id;
 	

@@ -139,6 +139,25 @@ public class ListenService extends IntentService {
 										Log.i("log", e.toString());
 									}
 									sc.write(ByteBuffer.wrap(bytes));
+									
+									//---------------------------------------------------
+									if (SocketTalkActivity.TEST_TWO_FLAG && SocketTalkActivity.TEST_TWO_SENT ) {
+										
+										int prev = ((id - mmsg.send_id)/2+SocketTalkActivity.out.size())%SocketTalkActivity.out.size();
+										Log.i("log", "prev is " + prev);
+										if (prev == 1) {
+											SocketTalkActivity.TEST_TWO_SENT = false;
+											int i = 1;
+											String m = id + ":" + i;
+											SocketTalkActivity.stat.add(1);
+											SocketTalkActivity.Pmax = Math.max(SocketTalkActivity.Amax, SocketTalkActivity.Pmax) + 1;
+											SocketTalkActivity.seq.add(SocketTalkActivity.Pmax);
+											
+											Intent send_intent = new Intent(this, SendService.class);
+											send_intent.putExtra("text", m);
+											startService(send_intent);
+										}
+									}
 								}
 
 								else if (msg_type.equals("us.forkloop.sockettalk.AgreeSeq")) {

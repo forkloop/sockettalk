@@ -18,6 +18,7 @@ public class TestTwo extends IntentService {
 	@Override
 	protected void onHandleIntent (Intent intent) {
 
+		SocketTalkActivity.TEST_TWO_FLAG = true;
 		try {
 			Thread.sleep(3000);
 		} catch (InterruptedException e) {
