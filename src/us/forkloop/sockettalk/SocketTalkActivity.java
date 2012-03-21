@@ -42,7 +42,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	
 	
 	// FOR TEST
-	static boolean TEST_TWO_FLAG=true;
+	static boolean TEST_TWO_FLAG=false;
 	static boolean TEST_TWO_SENT=true;
 	// Used to break tie when two msgs have the same seq.#
 	static int id;
@@ -52,6 +52,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	// # of messages sent by me
 	static int sent_count = 0;
 	
+	static int[] receive = new int[5];
 	////////////////////
 	static int Amax;
 	static int Pmax;
@@ -303,6 +304,7 @@ public class SocketTalkActivity extends Activity implements OnClickListener {
 	
 	public void Test2() {
 		
+		TEST_TWO_FLAG = true;
 		Intent i = new Intent(this, TestTwo.class);
 		startService(i);
 	}

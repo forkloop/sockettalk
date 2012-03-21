@@ -15,6 +15,8 @@ public class Msg implements Serializable {
 	String msg_content;
 	int msg_id;
 	boolean d_flag;		// Ready for delivery flag
+	int[] recv;
+	boolean test;
 }
 
 /* class for proposed sequence # */
